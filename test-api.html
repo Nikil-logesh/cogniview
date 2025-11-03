@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-box {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #0070f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0051cc;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Order API Testing Tool</h1>
+    
+    <div class="test-box">
+        <h2>Test 1: Create Order</h2>
+        <button onclick="testCreateOrder()">Create Test Order</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <div id="createResult"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>Test 2: Fetch Orders</h2>
+        <button onclick="testFetchOrders()">Fetch Orders</button>
+        <div id="fetchResult"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>Test 3: Check Products</h2>
+        <button onclick="testProducts()">Fetch Products</button>
+        <div id="productsResult"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>📋 Debug Log</h2>
+        <div id="debugLog" class="log"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        let logEntries = [];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = `[${timestamp}] ${message}`;
+            logEntries.push({ entry, type });
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const logDiv = document.getElementById('debugLog');
+            logDiv.innerHTML = logEntries.map(({ entry, type }) => {
+                const color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'black';
+                return `<div class="log-entry" style="color: ${color}">${entry}</div>`;
+            }).join('');
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            logEntries = [];
+            updateLogDisplay();
+            document.getElementById('createResult').innerHTML = '';
+            document.getElementById('fetchResult').innerHTML = '';
+            document.getElementById('productsResult').innerHTML = '';
+        }
+
+        async function testCreateOrder() {
+            addLog('🚀 Starting order creation test...');
+            
+            const orderData = {
+                product_id: 1,
+                product_name: 'Laptop Pro 15"',
+                price: 1299.99,
+                quantity: 1,
+                user_id: null
+            };
+
+            addLog(`📤 Sending: ${JSON.stringify(orderData)}`);
+
+            try {
+                const response = await fetch(`${API_URL}/api/orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(orderData),
+                });
+
+                const result = await response.json();
+                addLog(`📥 Response Status: ${response.status}`);
+                addLog(`📥 Response: ${JSON.stringify(result, null, 2)}`);
+
+                const resultDiv = document.getElementById('createResult');
+                if (response.ok) {
+                    resultDiv.innerHTML = `<p class="success">✅ Order created successfully!</p>
+                        <p>Order ID: ${result.order?.id}</p>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>`;
+                    addLog('✅ Order created successfully!', 'success');
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Failed to create order</p>
+                        <p>Error: ${result.error}</p>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>`;
+                    addLog(`❌ Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addLog(`❌ Exception: ${error.message}`, 'error');
+                document.getElementById('createResult').innerHTML = 
+                    `<p class="error">❌ Exception: ${error.message}</p>`;
+            }
+        }
+
+        async function testFetchOrders() {
+            addLog('🔍 Fetching orders...');
+            
+            try {
+                const response = await fetch(`${API_URL}/api/orders`);
+                const result = await response.json();
+                
+                addLog(`📥 Response Status: ${response.status}`);
+                addLog(`📥 Found ${result.orders?.length || 0} orders`);
+
+                const resultDiv = document.getElementById('fetchResult');
+                if (result.success) {
+                    resultDiv.innerHTML = `<p class="success">✅ Found ${result.orders.length} orders</p>
+                        <pre>${JSON.stringify(result.orders.slice(0, 5), null, 2)}</pre>`;
+                    addLog(`✅ Fetched ${result.orders.length} orders`, 'success');
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Failed to fetch orders</p>`;
+                    addLog('❌ Failed to fetch orders', 'error');
+                }
+            } catch (error) {
+                addLog(`❌ Exception: ${error.message}`, 'error');
+                document.getElementById('fetchResult').innerHTML = 
+                    `<p class="error">❌ Exception: ${error.message}</p>`;
+            }
+        }
+
+        async function testProducts() {
+            addLog('🔍 Fetching products from Supabase...');
+            
+            try {
+                // This tests if the Supabase connection is working
+                const response = await fetch(`${API_URL}/api/orders`);
+                const result = await response.json();
+                
+                addLog(`📥 Response Status: ${response.status}`);
+
+                const resultDiv = document.getElementById('productsResult');
+                if (response.ok) {
+                    resultDiv.innerHTML = `<p class="success">✅ API is responding</p>
+                        <p>Check the main page to see products</p>`;
+                    addLog('✅ API connection working', 'success');
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ API error</p>`;
+                    addLog('❌ API error', 'error');
+                }
+            } catch (error) {
+                addLog(`❌ Exception: ${error.message}`, 'error');
+                document.getElementById('productsResult').innerHTML = 
+                    `<p class="error">❌ Exception: ${error.message}</p>`;
+            }
+        }
+
+        // Initial log
+        addLog('🎯 Testing tool ready. Click buttons to test!');
+        addLog('📌 Make sure your Next.js dev server is running on port 3000');
+    </script>
+</body>
+</html>
