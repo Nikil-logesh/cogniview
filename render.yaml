@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: cogniview-store
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        fromSecret: SUPABASE_URL
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        fromSecret: SUPABASE_ANON_KEY
+      - key: ELASTICSEARCH_URL
+        fromSecret: ELASTICSEARCH_URL
+      - key: ELASTICSEARCH_API_KEY
+        fromSecret: ELASTICSEARCH_API_KEY
+    healthCheckPath: /api/health
+    plan: free
+    region: oregon
+    branch: master
+    rootDir: .
+    runtime: node
+    buildFilter:
+      paths:
+        - src/**
+        - pages/**
+        - components/**
+        - styles/**
+        - public/**
+        - package.json
+        - next.config.js
+        - tsconfig.json

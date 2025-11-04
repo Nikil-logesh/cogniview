@@ -28,13 +28,34 @@ export function useTelemetry() {
         metadata: metadata || {},
       }
 
+      // Send to Supabase
       const { error } = await supabase.from('logs').insert([logData])
-
       if (error) {
-        console.error('Failed to log event:', error)
-      } else {
-        console.log(`📊 Event logged: ${eventName}`)
+        console.error('Failed to log event to Supabase:', error)
       }
+
+      // Send to ELK Stack via API (server-side)
+      try {
+        await fetch('/api/elk-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            timestamp: new Date().toISOString(),
+            level: options?.severity === 'critical' ? 'error' : (options?.severity || 'info'),
+            event_name: eventName,
+            event_type: options?.eventType || 'system',
+            message: `${eventName}: ${JSON.stringify(metadata || {})}`,
+            user_id: user?.id || 'anonymous',
+            source: 'cogniview-app',
+            metadata: metadata || {}
+          })
+        })
+      } catch (elkError) {
+        // ELK is optional, don't fail if it's not available
+        console.warn('ELK logging failed:', elkError)
+      }
+
+      console.log(`📊 Event logged: ${eventName}`)
     } catch (error) {
       console.error('Telemetry error:', error)
     }
@@ -60,13 +81,32 @@ export function useTelemetry() {
         metadata: metadata || {},
       }
 
+      // Send to Supabase
       const { error } = await supabase.from('metrics').insert([metricData])
-
       if (error) {
-        console.error('Failed to record metric:', error)
-      } else {
-        console.log(`📈 Metric recorded: ${metricName} = ${value}${unit || ''}`)
+        console.error('Failed to record metric to Supabase:', error)
       }
+
+      // Send to ELK Stack via API (server-side)
+      try {
+        await fetch('/api/elk-metrics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            timestamp: new Date().toISOString(),
+            metric_name: metricName,
+            metric_value: value,
+            unit: unit || 'count',
+            source: 'cogniview-app',
+            metadata: metadata || {}
+          })
+        })
+      } catch (elkError) {
+        // ELK is optional, don't fail if it's not available
+        console.warn('ELK metrics failed:', elkError)
+      }
+
+      console.log(`📈 Metric recorded: ${metricName} = ${value}${unit || ''}`)
     } catch (error) {
       console.error('Telemetry error:', error)
     }
